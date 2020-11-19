@@ -1,0 +1,199 @@
+C51 COMPILER V9.54   LCD12864C                                                             05/13/2019 20:34:21 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE LCD12864C
+OBJECT MODULE PLACED IN .\Objects\lcd12864C.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE hardware\LCD12864C\lcd12864C.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\hardwar
+                    -e\delay;.\hardware\ds1302;.\hardware\LCD12864C;.\hardware\NRF24L01) DEBUG OBJECTEXTEND PRINT(.\Listings\lcd12864C.lst) T
+                    -ABS(2) OBJECT(.\Objects\lcd12864C.obj)
+
+line level    source
+
+   1          #include"lcd12864C.h"
+   2          
+   3          uchar code table[] = {"星期"};
+   4          uchar code table_bolang[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x06,0x00,0x09,0x00,0x00,0x
+             -90,
+   5          0x00,0x60,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,};
+   6          
+   7          uchar code table_maohao[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x80,0x01,0xC0,0x00,0x00,0x00,0x00,0x00,0x
+             -00,
+   8          0x00,0x00,0x00,0x00,0x01,0x80,0x01,0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,};
+   9          
+  10          
+  11          /**************************************************************
+  12          * 函 数 名         : LCD12864_Delay1ms
+  13          * 函数功能       : 延时1MS
+  14          * 输    入         : c
+  15          * 输    出         : 无
+  16          **************************************************************/
+  17          
+  18          void LCD12864_Delay1ms(uint c)
+  19          {
+  20   1          uchar a,b;
+  21   1        for(; c>0; c--)
+  22   1        {
+  23   2            for(b=199; b>0; b--)
+  24   2          {
+  25   3                for(a=1; a>0; a--);
+  26   3          }
+  27   2        }
+  28   1      }
+  29          
+  30          /****************发一个字节********************/
+  31          void LCD12864_SendByte(unsigned char zdata)  
+  32          {  
+  33   1          unsigned char i;  
+  34   1          for(i = 0;i < 8;i ++)  
+  35   1          {  
+  36   2              if((zdata<<i) & 0x80)  
+  37   2              {  
+  38   3                  LCD12864_SID = 1;  
+  39   3              }  
+  40   2              else  
+  41   2              {  
+  42   3                  LCD12864_SID = 0;  
+  43   3              }  
+  44   2              LCD12864_SCLK = 0; 
+  45   2              LCD12864_SCLK = 1;    
+  46   2          }     
+  47   1      } 
+  48          
+  49          /************写命令***************/
+  50          void  LCD12864_WriteCmd(unsigned char com)  
+  51          {  
+C51 COMPILER V9.54   LCD12864C                                                             05/13/2019 20:34:21 PAGE 2   
+
+  52   1            LCD12864_SendByte(0xf8);  
+  53   1            LCD12864_SendByte(com & 0xf0);     
+  54   1            LCD12864_SendByte((com << 4) & 0xf0);
+  55   1      }  
+  56          
+  57          /************写数据***************/   
+  58          void LCD12864_WriteData(unsigned char dat)  
+  59          {  
+  60   1           
+  61   1          LCD12864_SendByte(0xfa); 
+  62   1          LCD12864_SendByte(dat & 0xf0);   
+  63   1          LCD12864_SendByte((dat << 4) & 0xf0);
+  64   1      }  
+  65          
+  66          void LCD12864_Init()  
+  67          {        
+  68   1        //LCD12864_PSB = 0;       //串行//硬件已经拉低
+  69   1        LCD12864_CS =1;
+  70   1         
+  71   1        LCD12864_WriteCmd(0x30);  //选择基本指令操作
+  72   1        LCD12864_WriteCmd(0x0c);  //显示开，关光标
+  73   1        LCD12864_ClearScreen();   //清除LCD12864的显示内容  
+  74   1        LCD12864_ClearScreen_picture();
+  75   1      
+  76   1        
+  77   1        Draw_TX(0x80,0x83,table_bolang);
+  78   1        Draw_TX(0x80,0x85,table_bolang);
+  79   1        
+  80   1        Draw_TX(0x80,0x8b,table_maohao);
+  81   1        Draw_TX(0x80,0x8d,table_maohao);
+  82   1        
+  83   1        LCD12864_WriteCmd(0x81);  //设置显示位置在第1行第2个字处
+  84   1        LCD12864_WriteData('2');
+  85   1        LCD12864_WriteData('0');
+  86   1        LCD12864_SetWindow(1, 2); //设置显示位置在第2行第3个字处
+  87   1        LCD12864_DisplayString(table);
+  88   1      }    
+  89          void LCD12864_ClearScreen()  
+  90          {  
+  91   1          LCD12864_WriteCmd(0x01); 
+  92   1          LCD12864_Delay1ms(1);     //清屏后一定要延时
+  93   1      }  
+  94          
+  95          void LCD12864_SetWindow(unsigned char x, unsigned char y)  
+  96          {  
+  97   1          unsigned char pos;  
+  98   1          if(x == 0)  
+  99   1              x = 0x80;  
+ 100   1          else if(x == 1)  
+ 101   1              x = 0x90;  
+ 102   1          else if(x == 2)  
+ 103   1              x = 0x88;  
+ 104   1          else if(x == 3)  
+ 105   1              x = 0x98;  
+ 106   1          pos = x + y;  
+ 107   1          LCD12864_WriteCmd(pos);         
+ 108   1      }  
+ 109          
+ 110          void LCD12864_DisplayString(const uchar *s)  
+ 111          {    
+ 112   1          unsigned char  i = 0;  
+ 113   1          while(s[i]!='\0')  
+C51 COMPILER V9.54   LCD12864C                                                             05/13/2019 20:34:21 PAGE 3   
+
+ 114   1          {   
+ 115   2              LCD12864_WriteData(s[i]);  
+ 116   2              i++;  
+ 117   2          }  
+ 118   1      }
+ 119          
+ 120          /******************************************* 
+ 121          函数名称：Draw_TX 
+ 122          功 能：显示一个16*16大小的图形 
+ 123          参 数： Yaddr--Y地址  第一行0x80
+ 124                  Xaddr--X地址 
+ 125          dp--指向图形数据存放地址的指针 
+ 126          返回值 ：无 
+ 127          ********************************************/ 
+ 128          void Draw_TX(uchar Yaddr,uchar Xaddr,const uchar *dp) 
+ 129          { 
+ 130   1        uchar j; 
+ 131   1        uchar k=0; 
+ 132   1        
+ 133   1        LCD12864_WriteCmd(0x34); //使用扩展指令集，关闭绘图显示 
+ 134   1        
+ 135   1        for(j=0;j<16;j++) 
+ 136   1        { 
+ 137   2          LCD12864_WriteCmd(Yaddr++); //Y地址 
+ 138   2          LCD12864_WriteCmd(Xaddr); //X地址 
+ 139   2          LCD12864_WriteData(dp[k++]); 
+ 140   2          LCD12864_WriteData(dp[k++]); 
+ 141   2          
+ 142   2        } 
+ 143   1        LCD12864_WriteCmd(0x36); //打开绘图显示   
+ 144   1        LCD12864_WriteCmd(0x30); //回到基本指令集模式 
+ 145   1        LCD12864_WriteCmd(0x0c);  //显示开，关光标
+ 146   1      } 
+ 147          
+ 148          void LCD12864_ClearScreen_picture(void)
+ 149          {
+ 150   1        uchar i,j;
+ 151   1      
+ 152   1        LCD12864_WriteCmd(0x34);    //开启拓展指令集
+ 153   1      
+ 154   1        for(i=0;i<32;i++)       //因为LCD有纵坐标32格所以写三十二次
+ 155   1        {
+ 156   2          LCD12864_WriteCmd(0x80+i);      //先写入纵坐标Y的值
+ 157   2          LCD12864_WriteCmd(0x80);      //再写入横坐标X的值
+ 158   2          for(j=0;j<32;j++)     //横坐标有16位，每位写入两个字节的的数据，也
+ 159   2          {             //就写入32次以为当写入两个字节之后横坐标会自
+ 160   3            LCD12864_WriteData(0x00);   //动加1，所以就不用再次写入地址了。
+ 161   3          }
+ 162   2        }
+ 163   1      
+ 164   1        LCD12864_WriteCmd(0x36);   //0x36扩展指令里面打开绘图显示
+ 165   1        LCD12864_WriteCmd(0x30);   //恢复基本指令集
+ 166   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    381    ----
+   CONSTANT SIZE    =     69    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       9
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   LCD12864C                                                             05/13/2019 20:34:21 PAGE 4   
+
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

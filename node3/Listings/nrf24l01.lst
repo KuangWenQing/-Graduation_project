@@ -1,0 +1,285 @@
+C51 COMPILER V9.54   NRF24L01                                                              05/13/2019 20:46:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE NRF24L01
+OBJECT MODULE PLACED IN .\Objects\nrf24l01.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE hardware\NRF24L01\nrf24l01.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\hardware\
+                    -delay;.\hardware\DHT11;.\hardware\NRF24L01) DEBUG OBJECTEXTEND PRINT(.\Listings\nrf24l01.lst) TABS(2) OBJECT(.\Objects\n
+                    -rf24l01.obj)
+
+line level    source
+
+   1          #include "nrf24l01.h"
+   2          
+   3          /**************说明***************
+   4          1、产自Nordic的芯片叫NRF24L01，而产自南京的芯片叫Si24R1
+   5          2、两个模块的技术资料基本一样。感觉Si24R1无线模块就是NRF24L01无线模块，
+   6          同样的程序可以驱动这两个模块。而且，实现的功能也一样，
+   7          也就是说，这两个芯片的寄存器地址、内容、操作命令等基本一样。
+   8          更多内容见下面网站：
+   9          http://blog.sina.com.cn/s/blog_6fd8c5830102v9yi.html
+  10          http://www.dnsj88.com/Products/si24r1qgzd.html
+  11          **********************************/
+  12          
+  13          // 定义一个静态发送地址
+  14          //u8 code ADDRESS0[ADDR_WIDTH] = {0x0A,0x01,0x07,0x0E,0x01};  
+  15          //u8 code ADDRESS1[ADDR_WIDTH] = {0x0C,0x0C,0x0C,0x0C,0x01};
+  16          u8 code ADDRESS2[ADDR_WIDTH] = {0x0D,0x0C,0x0C,0x0C,0x01};
+  17          
+  18          /*****************SPI时序函数********************
+  19          读数据时，byte写0
+  20          
+  21          其实不论读写数据，该函数都会返回byte，
+  22          只是配置成写数据MISO上的电平不会变。
+  23          ************************************************/
+  24          static u8 SPI_RW(u8 byte)
+  25          {
+  26   1        u8 bit_ctr;
+  27   1        for(bit_ctr=0; bit_ctr<8; bit_ctr++)
+  28   1        {
+  29   2          MOSI = (byte & 0x80);   //MCU to NRF24L01 
+  30   2          byte = (byte << 1);    
+  31   2          
+  32   2          SCK = 1;     
+  33   2          
+  34   2          byte |= MISO;               //NRF24L01 to MCU     
+  35   2          
+  36   2          SCK = 0;                                
+  37   2        }
+  38   1        return(byte);                              
+  39   1      }
+  40          
+  41          
+  42          /********************************************************
+  43          函数功能：SI24R1引脚初始化                
+  44          入口参数：无
+  45          返回  值：无
+  46          *********************************************************/
+  47          void SI24R1_Init(void)
+  48          {
+  49   1        SCK = 0;      //SPI时钟线拉低
+  50   1        CSN = 1;        
+  51   1        CE  = 0;        
+  52   1        IRQ = 1;
+  53   1      }
+C51 COMPILER V9.54   NRF24L01                                                              05/13/2019 20:46:31 PAGE 2   
+
+  54          
+  55          
+  56          /********************************************************
+  57          函数功能：写寄存器的值（单字节）                
+  58          入口参数：reg:寄存器映射地址（格式：WRITE_REG｜reg）
+  59                    value:寄存器的值
+  60          返回  值：状态寄存器的值
+  61          *********************************************************/
+  62          u8 SI24R1_Write_Reg(u8 reg, u8 value)
+  63          {
+  64   1        u8 status;
+  65   1      
+  66   1        CSN = 0;                 
+  67   1        status = SPI_RW(reg);       
+  68   1        SPI_RW(value);
+  69   1        CSN = 1;  
+  70   1        
+  71   1        return(status);
+  72   1      }
+  73          
+  74          
+  75          /********************************************************
+  76          函数功能：写寄存器的值（多字节）                  
+  77          入口参数：reg:寄存器映射地址（格式：WRITE_REG｜reg）
+  78                    pBuf:写数据首地址
+  79                    bytes:写数据字节数
+  80          返回  值：状态寄存器的值
+  81          *********************************************************/
+  82          u8 SI24R1_Write_Buf(u8 reg, const u8 *pBuf, u8 bytes)
+  83          {
+  84   1        u8 status,byte_ctr;
+  85   1      
+  86   1        CSN = 0;                                        
+  87   1        status = SPI_RW(reg);                          
+  88   1        for(byte_ctr=0; byte_ctr<bytes; byte_ctr++)     
+  89   1          SPI_RW(*pBuf++);
+  90   1        CSN = 1;                                        
+  91   1      
+  92   1        return(status);       
+  93   1      }                            
+  94          
+  95          
+  96          /********************************************************
+  97          函数功能：读取寄存器的值（单字节）                  
+  98          入口参数：reg:寄存器映射地址（格式：READ_REG｜reg）
+  99          返回  值：寄存器值
+ 100          *********************************************************/
+ 101          u8 SI24R1_Read_Reg(u8 reg)
+ 102          {
+ 103   1        u8 value;
+ 104   1      
+ 105   1        CSN = 0;    
+ 106   1        SPI_RW(reg);      
+ 107   1        value = SPI_RW(0);
+ 108   1        CSN = 1;              
+ 109   1      
+ 110   1        return(value);
+ 111   1      }
+ 112          
+ 113          
+ 114          /********************************************************
+ 115          函数功能：读取寄存器的值（多字节）                  
+C51 COMPILER V9.54   NRF24L01                                                              05/13/2019 20:46:31 PAGE 3   
+
+ 116          入口参数：reg:寄存器映射地址（READ_REG｜reg）
+ 117                    pBuf:接收缓冲区的首地址
+ 118                    bytes:读取字节数
+ 119          返回  值：状态寄存器的值
+ 120          *********************************************************/
+ 121          u8 SI24R1_Read_Buf(u8 reg, u8 *pBuf, u8 bytes)
+ 122          {
+ 123   1        u8 status,byte_ctr;
+ 124   1      
+ 125   1        CSN = 0;                                        
+ 126   1        status = SPI_RW(reg);                           
+ 127   1        for(byte_ctr=0;byte_ctr<bytes;byte_ctr++)
+ 128   1          pBuf[byte_ctr] = SPI_RW(0);         //读取数据，低字节在前
+ 129   1        CSN = 1;                                        
+ 130   1      
+ 131   1        return(status);    
+ 132   1      }
+ 133          
+ 134          
+ 135          /********************************************************
+ 136          函数功能：SI24R1接收模式初始化                      
+ 137          入口参数：无
+ 138          返回  值：无
+ 139          *********************************************************/
+ 140          /*void SI24R1_RX_Mode(void)
+ 141          {
+ 142            CE = 0;
+ 143            SI24R1_Write_Buf(WRITE_REG + RX_ADDR_P2, ADDRESS2, ADDR_WIDTH); // 接收设备接收通道0使用和发�
+             -��设备相同的发送地址
+ 144            SI24R1_Write_Reg(WRITE_REG + EN_AA, 0x01);      // 使能接收通道0自动应答
+ 145            SI24R1_Write_Reg(WRITE_REG + EN_RXADDR, 0x01);      // 使能接收通道0
+ 146            SI24R1_Write_Reg(WRITE_REG + RF_CH, 40);            // 选择射频通道0x40
+ 147            SI24R1_Write_Reg(WRITE_REG + RX_PW_P0, PLOAD_WIDTH); //接收通道0选择和发送通道相同有效数�
+             -��宽度
+ 148            SI24R1_Write_Reg(WRITE_REG + RF_SETUP, 0x07); // 数据传输率1Mbps，发射功率7dBm
+ 149            SI24R1_Write_Reg(WRITE_REG + CONFIG, 0x0f); // CRC使能，16位CRC校验，上电，接收模式
+ 150            SI24R1_Write_Reg(WRITE_REG + STATUS, 0xff); //清除所有的中断标志位
+ 151            CE = 1;                                     // 拉高CE启动接收设备
+ 152          }           
+ 153          */
+ 154          
+ 155          /********************************************************
+ 156          函数功能：SI24R1发送模式初始化                      
+ 157          入口参数：无
+ 158          返回  值：无
+ 159          *********************************************************/
+ 160          /*void SI24R1_TX_Mode(void)
+ 161          {
+ 162            CE = 0;
+ 163            SI24R1_Write_Buf(WRITE_REG + TX_ADDR, ADDRESS2, ADDR_WIDTH);     // 写入发送地址
+ 164            SI24R1_Write_Buf(WRITE_REG + RX_ADDR_P2, ADDRESS2, ADDR_WIDTH);  // 为了应答接收设备，接收通�
+             -��0地址和发送地址相同
+ 165          
+ 166            SI24R1_Write_Reg(WRITE_REG + EN_AA, 0x01);    // 使能接收通道0自动应答
+ 167            SI24R1_Write_Reg(WRITE_REG + EN_RXADDR, 0x01);  // 使能接收通道0
+ 168            SI24R1_Write_Reg(WRITE_REG + SETUP_RETR, 0x0a); // 自动重发延时等待250us+86us，自动重发10次
+ 169            SI24R1_Write_Reg(WRITE_REG + RF_CH, 40);        // 选择射频通道0x40
+ 170            SI24R1_Write_Reg(WRITE_REG + RF_SETUP, 0x07);   // 数据传输率1Mbps，发射功率7dBm
+ 171            SI24R1_Write_Reg(WRITE_REG + CONFIG, 0x0e);     // CRC使能，16位CRC校验，上电
+ 172            CE = 1;
+ 173          }
+ 174          */
+C51 COMPILER V9.54   NRF24L01                                                              05/13/2019 20:46:31 PAGE 4   
+
+ 175          void SI24R1_TX_Mode_multichannel(void)
+ 176          {
+ 177   1        CE = 0;
+ 178   1      /*
+ 179   1        SI24R1_Write_Reg(WRITE_REG + FEATURE, 0x04);      //特征寄存器第三位(EN_DPL)置1
+ 180   1        SI24R1_Write_Reg(WRITE_REG + DYNPD, 0x3f);        //使能6个通道都是“动态负载长度”
+ 181   1      */
+ 182   1        
+ 183   1        SI24R1_Write_Reg(WRITE_REG + EN_AA, 0x3f);        //使能6个通道自动应答
+ 184   1        SI24R1_Write_Reg(WRITE_REG + EN_RXADDR, 0x3f);    //开启6个通道
+ 185   1        SI24R1_Write_Reg(WRITE_REG + RF_CH, 40);          // 选择射频通道0x40
+ 186   1        SI24R1_Write_Reg(WRITE_REG + RF_SETUP, 0x07);     // 数据传输率1Mbps，发射功率7dBm
+ 187   1      //  SI24R1_Write_Reg(WRITE_REG + SETUP_AW, 0x03);     //5个字节的地址宽度
+ 188   1        
+ 189   1        SI24R1_Write_Buf(WRITE_REG + TX_ADDR, ADDRESS2, ADDR_WIDTH);
+ 190   1        SI24R1_Write_Buf(WRITE_REG + RX_ADDR_P0, ADDRESS2, ADDR_WIDTH);
+ 191   1        
+ 192   1        SI24R1_Write_Reg(WRITE_REG + CONFIG, 0x0e); // CRC使能，16位CRC校验，上电，发送模式
+ 193   1      }
+ 194          
+ 195          /********************************************************
+ 196          函数功能：读取接收数据                       
+ 197          入口参数：rxbuf:接收数据存放首地址
+ 198          返回  值：0:接收到数据
+ 199                    1:没有接收到数据
+ 200          *********************************************************/
+ 201          /*u8 SI24R1_RxPacket(u8 *rxbuf)
+ 202          {
+ 203            u8 state;
+ 204            state = SI24R1_Read_Reg(STATUS);                //读取状态寄存器的值    
+ 205              
+ 206            CE = 0;
+ 207            SI24R1_Write_Reg(WRITE_REG+STATUS,state);     //清除RX_DS中断标志
+ 208          
+ 209            if(state & RX_DR)                   //接收到数据
+ 210            {
+ 211              SI24R1_Read_Buf(RD_RX_PLOAD,rxbuf,PLOAD_WIDTH); //读取数据
+ 212              SI24R1_Write_Reg(FLUSH_RX,0xff);        //清除RX FIFO寄存器
+ 213              CE = 1;
+ 214              return 0; 
+ 215            }    
+ 216            CE =1;
+ 217            return 1;                                           //没收到任何数据
+ 218          }
+ 219          */
+ 220          
+ 221          /********************************************************
+ 222          函数功能：发送一个数据包                      
+ 223          入口参数：txbuf:要发送的数据
+ 224          返回  值：0x10:达到最大重发次数，发送失败 
+ 225                    0x20:发送成功            
+ 226                    0xff:发送失败                  
+ 227          *********************************************************/
+ 228          u8 SI24R1_TxPacket(u8 *txbuf)
+ 229          {
+ 230   1        u8 state = 11;
+ 231   1        CE=0;                       //CE拉低，使能SI24R1配置
+ 232   1        SI24R1_Write_Buf(WR_TX_PLOAD, txbuf, PLOAD_WIDTH);  //写数据到TX FIFO,32个字节
+ 233   1        CE=1;                       //CE置高，使能发送    
+ 234   1        
+ 235   1        while((IRQ) && (state--));                //等待发送完成
+ 236   1        state = SI24R1_Read_Reg(STATUS);          //读取状态寄存器的值    
+C51 COMPILER V9.54   NRF24L01                                                              05/13/2019 20:46:31 PAGE 5   
+
+ 237   1        SI24R1_Write_Reg(WRITE_REG+STATUS, state);    //清除TX_DS或MAX_RT中断标志
+ 238   1        if(state&MAX_RT)                //达到最大重发次数
+ 239   1        {
+ 240   2          SI24R1_Write_Reg(FLUSH_TX,0xff);      //清除TX FIFO寄存器 
+ 241   2          return MAX_RT; 
+ 242   2        }
+ 243   1        if(state&TX_DS)           //发送完成
+ 244   1        {
+ 245   2          return TX_DS;
+ 246   2        }
+ 247   1        return 0XFF;            //发送失败
+ 248   1      }
+ 249          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    291    ----
+   CONSTANT SIZE    =      5    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      11
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

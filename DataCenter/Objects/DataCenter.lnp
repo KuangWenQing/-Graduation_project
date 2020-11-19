@@ -1,0 +1,7 @@
+".\Objects\delay.obj",
+".\Objects\ds1302.obj",
+".\Objects\lcd12864C.obj",
+".\Objects\nrf24l01.obj",
+".\Objects\main.obj" 
+TO ".\Objects\DataCenter" 
+PRINT(".\Listings\DataCenter.m51") RAMSIZE(256) 

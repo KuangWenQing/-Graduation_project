@@ -1,0 +1,6 @@
+".\Objects\main.obj",
+".\Objects\DHT11.obj",
+".\Objects\nrf24l01.obj",
+".\Objects\delay.obj" 
+TO ".\Objects\node3" 
+PRINT(".\Listings\node3.m51") RAMSIZE(256) 
